@@ -33,7 +33,7 @@ $(BIN) $(OBJ):
 	$(MKDIR) $@
 
 run: $(EXE)
-	$< $(argument)
+	$< $(arg)
 
 clean:
 	$(RMDIR) $(OBJ) $(BIN)

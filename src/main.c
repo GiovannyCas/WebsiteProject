@@ -3,7 +3,7 @@
 
 
 #define PORT 8181
-#define LISTENADDR "127.0.0.1"
+#define LISTENADDR "0.0.0.0"
 
 char* error;
 
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
     
     if(argc < 2)
     {
-        fprintf(stderr,"Usage: %server <listening port>\n",
+        fprintf(stderr,"Usage: %s <listening port>\n",
         argv[0]);
         return -1;
     }
@@ -92,13 +92,13 @@ int main(int argc, char *argv[])
         return -1;
     }   
 
-    printf("Listening on %s:%c\n", LISTENADDR, port);
+    printf("Listening on %s:%s\n", LISTENADDR, port);
     while(1)
     {
         c = cli_accept(s);
         if(!c)
         {
-            fprintf(stderr, "%server\n", error);
+            fprintf(stderr, "%s\n", error);
             continue;
         }
 
