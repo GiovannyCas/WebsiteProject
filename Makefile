@@ -13,7 +13,7 @@ SRC     := ./src
 INCLUDE := $(SRC)/include
 SRCS    := $(wildcard $(SRC)/*.c)
 OBJS    := $(patsubst $(SRC)/%.c,$(OBJ)/%.o,$(SRCS))
-EXE     := $(BIN)/main.exe
+EXE     := $(BIN)/httpserver.exe
 CFLAGS  := -I$(INCLUDE)
 LDLIBS  := -lm
 
