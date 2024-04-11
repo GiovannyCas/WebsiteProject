@@ -1,0 +1,9 @@
+{
+    "makefile.launchConfigurations": [
+        {
+            "cwd": "/Users/csgiova/C_C++Projects/WebsiteCproject",
+            "binaryPath": "/Users/csgiova/C_C++Projects/WebsiteCproject/HttpServer",
+            "binaryArgs": []
+        }
+    ]
+}
