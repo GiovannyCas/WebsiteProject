@@ -23,7 +23,7 @@ int srv_init(int portno)
 
     srv.sin_family = AF_INET;
     srv.sin_addr.s_addr = inet_addr(LISTENADDR);
-    srv.sin_port = htonl(portno);
+    srv.sin_port = htons(portno);
 
     if(bind(s, (struct sockaddr *)&srv, sizeof(srv)))
     {
@@ -71,20 +71,19 @@ int main(int argc, char *argv[])
 {
     printf("hello America ya\n");
     int s, c;
-    char *port;
     
-    if(argc < 2)
-    {
-        fprintf(stderr,"Usage: %s <listening port>\n",
-        argv[0]);
-        return -1;
-    }
-    else
-    {
-        port = argv[1];
-    }
+    // if(argc < 2)
+    // {
+    //     fprintf(stderr,"Usage: %s <listening port>\n",
+    //     argv[0]);
+    //     return -1;
+    // }
+    // else
+    // {
+    //     port = argv[1];
+    // }
     
-    s = srv_init(atoi(port));
+    s = srv_init(PORT);
 
     if(!s)
     {
@@ -92,7 +91,7 @@ int main(int argc, char *argv[])
         return -1;
     }   
 
-    printf("Listening on %s:%s\n", LISTENADDR, port);
+    printf("Listening on %s:%i\n", LISTENADDR, PORT);
     while(1)
     {
         c = cli_accept(s);
