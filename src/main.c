@@ -3,7 +3,7 @@
 
 
 #define PORT 8181
-#define LISTENADDR "0.0.0.0"
+#define LISTENADDR "127.0.0.1"
 
 char* error;
 
@@ -32,7 +32,7 @@ int srv_init(int portno)
         return 0;
     }
 
-    if(listen(s, 5))
+    if(listen(s, 5) != 0)
     {
         close(s);
         error = "listen() error";
