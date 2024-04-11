@@ -6,3 +6,8 @@
 build/obj/main.o
 
 .DS_Store
+src/main.dSYM/Contents/Info.plist
+src/main.dSYM/Contents/Resources/DWARF/main
+src/main.dSYM/Contents/Resources/Relocations/aarch64/main.yml
+src/main
+.vscode/tasks.json
