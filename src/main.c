@@ -128,11 +128,54 @@ char *cli_read(int c)
     
 }
 
+void http_response(int c, char* contentType, char* data)
+{
+    char buf[512];
+    int n;
+
+    memset(buf, 0, 512);
+
+    n= strlen(data);
+    snprintf(buf, 511, 
+    "Content-Type: %s\n"
+    "Content-Length: %d\n"
+    "\n%s\n",
+    contentType, n, data);
+
+    n = strlen(buf);
+    write(c, buf, n);
+
+    return;
+}
+
+void http_headers(int c, int code)
+{
+    char buf[512];
+    int n;
+
+    memset(buf, 0, 512);
+    snprintf(buf, 511, 
+    "HTTP/1.0 %d OK\n"
+    "Server: main.c\n"
+    "Cache-Control: no-store, no-cache, max-age=0, private\n"
+    "Content-Language: en\n"
+    "Expires: -1\n"
+    "X-Frame-Options: SAMEORIGIN\n",
+    code);
+    
+    n = strlen(buf);
+    write(c, buf, n);
+
+    return;
+}
+
 void cli_conn(int s, int c)
 {
     httpreq *req;
-    
     char *p;
+    char *res;
+
+    
 
     p = cli_read(c);
     if(!p)
@@ -150,51 +193,32 @@ void cli_conn(int s, int c)
         return;
     }
 
-    printf("'%s'\n'%s'\n", req->method, req->url);
+    
+    if(!strcmp(req->method, "GET") && (!strcmp(req->url, "/app/webpage")))
+    {
+        res = "<html>Hello world </html>";
+        http_headers(c, 200); /* 200 = everything is ok. */
+        http_response(c, "text/html", res);
+    }
+    else
+    {
+        res = "File not found";
+        http_headers(c, 404); /* 404 = file not found. */
+        http_response(c, "text/plain", res);
+    }
+
     free(req);
+    close(s);
     close(c);
+
     return;
 }
 
 int main(int argc, char *argv[])
 {
-    //printf("hello America ya\n");
+    
     int s, c;
-   // char* template;
-    //httpreq *req;
-    //char buf[512];
-    
-    //template = 
-        // "GET /sdfsdfd HTTP/1.1\n"
-        // "HOST: fagelsjo.net:8181\n"
-        // "Upgrade-Insecure-Requests: 1\n"
-        // "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\n"
-        // "User-Agent: Mozilla/5.0 (Macintosh; Silicon Mac Os X 14_3_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.3 Safari/605.1.15\n"
-        // "Accept-Language: en-GB, en;q=0.9\n"
-        // "Accept-Encoding: gzip, deflate\n"
-        // "Connection: keep-alive\n"
-        // "\n", 0X00;
-    
-
-   // memset(buf, 0, 512);
-    //strncpy(buf, template, 511);
-
-    //req = parse_http(buf);
-
-   // printf("Method: '%s'\nURL: '%s'\n", 
-     //   req->method, req->url);
-    //free(req);
-    //return 0;
-    // if(argc < 2)
-    // {
-    //     fprintf(stderr,"Usage: %s <listening port>\n",
-    //     argv[0]);
-    //     return -1;
-    // }
-    // else
-    // {
-    //     port = argv[1];
-    // }
+   
     
     s = srv_init(PORT);
 
