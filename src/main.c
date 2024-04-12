@@ -14,6 +14,15 @@ struct sHttpRequest
 };
 typedef struct sHttpRequest httpreq;
 
+struct sFile
+{
+    char filename[64];
+    char* fContent;
+    int size;
+};
+
+typedef struct sFile File;
+
 char* error;
 
 /* return 0 on error, or it return a socket fd. */
@@ -128,6 +137,8 @@ char *cli_read(int c)
     
 }
 
+
+
 void http_response(int c, char* contentType, char* data)
 {
     char buf[512];
@@ -135,7 +146,7 @@ void http_response(int c, char* contentType, char* data)
 
     memset(buf, 0, 512);
 
-    n= strlen(data);
+    n = strlen(data);
     snprintf(buf, 511, 
     "Content-Type: %s\n"
     "Content-Length: %d\n"
@@ -169,6 +180,97 @@ void http_headers(int c, int code)
     return;
 }
 
+/* returns 0 on error, or a file structure */
+File *readfile(char* filename)
+{
+    char buf[512];
+    char* p;
+    int n, x, fd;
+    File* f;
+
+    fd = open(filename, O_RDONLY);
+    if(fd < 0)
+    {
+        return 0;
+    }
+    f = malloc(sizeof(struct sFile));
+    if(!f)
+    {
+        close(fd);
+        return 0;
+    }
+
+    strncpy(f->filename, filename, 63);
+    f->fContent = malloc(512);
+
+    x = 0; /* bytes read */
+    while(1)
+    {
+        memset(buf, 0, 512);
+        n = read(fd, buf, 512);
+        if(!n)
+        {
+            break;
+        }
+        else if(x == -1)
+        {
+            close(fd);
+            free(f->fContent);
+            free(f);
+
+            return 0;
+        }
+
+        strncpy(buf, (f->fContent) + x, n);
+        x += n;
+        f->fContent = realloc(f->fContent, (512 + x));
+    }
+
+}
+
+/* 1 = everything is ok, 0 = on error. */
+int sendfile(int c, char* contentType, File* file)
+{ 
+    char buf[512];
+    char* p;
+    int n, x;
+
+    if(!file)
+    {
+        return 0;
+    }
+
+    memset(buf, 0, 512);
+    snprintf(buf, 511, 
+    "Content-Type: %s\n"
+    "Content-Length: %d\n",
+    contentType, file->size);
+    
+    n = file->size;
+    p = file->fContent;
+    while(1)
+    {
+        
+        x = write(c, p, (n < 512)?n:512);
+        if(x < 1)
+        {
+            return 0;
+        }
+        n -= x;
+        if(n < 1)
+        {
+            break;
+        }
+        else
+        {
+            p += x;
+        }
+    }
+
+    return 1;
+
+}
+
 void cli_conn(int s, int c)
 {
     httpreq *req;
@@ -193,7 +295,10 @@ void cli_conn(int s, int c)
         return;
     }
 
-    
+    if(!strcmp(req->method, "GET" && !strncmp(req->url, "/img/", 5)))
+    {
+
+    }
     if(!strcmp(req->method, "GET") && (!strcmp(req->url, "/app/webpage")))
     {
         res = "<html>Hello world </html>";
