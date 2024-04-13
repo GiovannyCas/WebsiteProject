@@ -5,6 +5,8 @@
 #define PORT 8181
 #define LISTENADDR "127.0.0.1"
 
+/* http://localhost:8181/img/test.jpg */
+
 
 /* structures */
 struct sHttpRequest
@@ -179,61 +181,28 @@ void http_headers(int c, int code)
 
     return;
 }
-
-/* returns 0 on error, or a file structure */
-File *readfile(char* filename)
+void hexdump(char* str, int size)
 {
-    char buf[512];
-    char* p;
-    int n, x, fd;
-    File* f;
+    char *p;
+    int i;
 
-    fd = open(filename, O_RDONLY);
-    if(fd < 0)
+    for(p = str, i=0 ; i<size; i++)
     {
-        return 0;
+        printf("0x%2.x", *p++);
     }
-    f = malloc(sizeof(struct sFile));
-    if(!f)
-    {
-        close(fd);
-        return 0;
-    }
+    printf("\n");
+    fflush(stdout);
 
-    strncpy(f->filename, filename, 63);
-    f->fContent = malloc(512);
-
-    x = 0; /* bytes read */
-    while(1)
-    {
-        memset(buf, 0, 512);
-        n = read(fd, buf, 512);
-        if(!n)
-        {
-            break;
-        }
-        else if(x == -1)
-        {
-            close(fd);
-            free(f->fContent);
-            free(f);
-
-            return 0;
-        }
-
-        strncpy(buf, (f->fContent) + x, n);
-        x += n;
-        f->fContent = realloc(f->fContent, (512 + x));
-    }
-
+    return;
 }
 
 /* 1 = everything is ok, 0 = on error. */
-int sendfile(int c, char* contentType, File* file)
+int sendfileToClient(int c, char* contentType, File* file)
 { 
     char buf[512];
     char* p;
     int n, x;
+    
 
     if(!file)
     {
@@ -243,15 +212,19 @@ int sendfile(int c, char* contentType, File* file)
     memset(buf, 0, 512);
     snprintf(buf, 511, 
     "Content-Type: %s\n"
-    "Content-Length: %d\n",
+    "Content-Length: %d\n\n",
     contentType, file->size);
     
+    n = strlen(buf);
+    write(c, buf, n);
+
     n = file->size;
     p = file->fContent;
     while(1)
     {
         
         x = write(c, p, (n < 512)?n:512);
+        
         if(x < 1)
         {
             return 0;
@@ -271,13 +244,69 @@ int sendfile(int c, char* contentType, File* file)
 
 }
 
+
+/* returns 0 on error, or a file structure */
+File* readfile(char* filename)
+{
+    char buf[512];
+    char* p;
+    int n, x, fd;
+    File* f;
+    printf("Opening file\n");
+    fd = open(filename, O_RDONLY);
+    
+    if(fd < 0)
+    {
+        printf("Failed to open file");
+        return 0;
+    }
+    f = malloc(sizeof(struct sFile));
+    if(!f)
+    {
+        close(fd);
+        return 0;
+    }
+
+    strncpy(f->filename, filename, 63);
+    f->fContent = malloc(512);
+    printf("Now read() the file\n");
+    x = 0; /* bytes read */
+    while(1)
+    {
+        memset(buf, 0, 512);
+        n = read(fd, buf, 512);
+        if(!n)
+        {
+            break;
+        }
+        else if(x == -1)
+        {
+            close(fd);
+            free(f->fContent);
+            free(f);
+            printf("Failed error.");
+            return 0;
+        }
+
+        memcpy((f->fContent) + x, buf,  n);
+        x += n;
+        f->fContent = realloc(f->fContent, (512 + x));
+    }
+    f->size = x;
+    close(fd);
+    return f;
+
+}
+
+
+
 void cli_conn(int s, int c)
 {
     httpreq *req;
     char *p;
     char *res;
-
-    
+    char str[96];
+    File* file;
 
     p = cli_read(c);
     if(!p)
@@ -294,14 +323,41 @@ void cli_conn(int s, int c)
         close(c);
         return;
     }
-
-    if(!strcmp(req->method, "GET" && !strncmp(req->url, "/img/", 5)))
+    /* TODO: improve security by checking for things like "../.." etc */
+    if(!strcmp(req->method, "GET") && !strncmp(req->url, "/img/", 5))
     {
+        if(strstr(req->url, ".."))
+        {
+            http_headers(c, 403); /* 403-series = access denied etc */
+            res = "Access denied";
+            http_response(c, "text/plain", res);
 
+        }
+        memset(str, 0, 96);
+        snprintf(str,95, ".%s", req->url);
+        file = readfile(str);
+        if(!file)
+        {
+            res = "404 - File not found";
+            http_headers(c, 404); /* 404 = file not found. */
+            http_response(c, "text/plain", res);
+            
+        }
+        else
+        {
+            http_headers(c, 200);
+            if(!sendfileToClient(c, "image/png", file))
+            {
+                res = "HTTP server error";
+                http_headers(c, 500); /* 500 = server error. */
+                http_response(c, "text/plain", res);
+            }
+            
+        }
     }
-    if(!strcmp(req->method, "GET") && (!strcmp(req->url, "/app/webpage")))
+    if(!strcmp(req->method, "GET") && !strcmp(req->url, "/app/webpage"))
     {
-        res = "<html>Hello world </html>";
+        res = "<html><img src='/img/test.jpg' alt='image' /></html>";
         http_headers(c, 200); /* 200 = everything is ok. */
         http_response(c, "text/html", res);
     }
@@ -309,13 +365,12 @@ void cli_conn(int s, int c)
     {
         res = "File not found";
         http_headers(c, 404); /* 404 = file not found. */
-        http_response(c, "text/plain", res);
+        http_response(c, "text/plain", res); 
     }
 
     free(req);
-    close(s);
     close(c);
-
+    free(file->fContent);
     return;
 }
 
@@ -343,6 +398,8 @@ int main(int argc, char *argv[])
             continue;
         }
 
+       
+
         printf("Incoming connection\n");
 
         /* for the main process: return the new process' id
@@ -350,12 +407,16 @@ int main(int argc, char *argv[])
          * */
         if(!fork())
         {
+            
             cli_conn(s, c);
+            close(s);
+            exit(0);
         }
+        close(c);
       
     }
 
-
+    printf("Server shuting down");
 
     return -1;
 }
