@@ -1,14 +1,12 @@
 #include "include/global.h"
 
 
-
 #define PORT 8181
 #define LISTENADDR "127.0.0.1"
 
 /* http://localhost:8181/img/test.jpg */
 
-
-/* structures */
+/* Structures */
 struct sHttpRequest
 {
     char method[8];
@@ -24,8 +22,79 @@ struct sFile
 };
 
 typedef struct sFile File;
+/*************/
 
+/* Error messagers*/
 char* error;
+/******************/
+
+/* HTTP FUNCTIONS */
+httpreq *parse_http(char* str);
+void http_response(int c, char* contentType, char* data);
+/******************/
+
+/* MISC FUNCTIONS */
+File* readfile(char* filename);
+int sendfiletoclient(int c, char* contentType, File* file);
+/******************/
+
+/* SERVER FUNCTIONS */
+int srv_init(int portno);
+/********************/
+
+/* CLIENT FUNCTIONS */
+int cli_accept(int s);
+char *cli_read(int c);
+void cli_conn(int s, int c);
+/********************/
+
+
+int main(int argc, char *argv[])
+{
+    
+    int s, c;
+   
+    
+    s = srv_init(PORT);
+
+    if(!s)
+    {
+        fprintf(stderr, "%s\n", error);
+        return -1;
+    }   
+
+    printf("Listening on %s:%i\n", LISTENADDR, PORT);
+    while(1)
+    {
+        c = cli_accept(s);
+        if(!c)
+        {
+            fprintf(stderr, "%s\n", error);
+            continue;
+        }
+
+       
+
+        printf("Incoming connection\n");
+
+        /* for the main process: return the new process' id
+         * for the new process: return 0
+         * */
+        if(!fork())
+        {
+            
+            cli_conn(s, c);
+            close(s);
+            exit(0);
+        }
+        close(c);
+      
+    }
+
+    printf("Server shuting down");
+
+    return -1;
+}
 
 /* return 0 on error, or it return a socket fd. */
 int srv_init(int portno)
@@ -197,7 +266,7 @@ void hexdump(char* str, int size)
 }
 
 /* 1 = everything is ok, 0 = on error. */
-int sendfileToClient(int c, char* contentType, File* file)
+int sendfiletoclient(int c, char* contentType, File* file)
 { 
     char buf[512];
     char* p;
@@ -298,8 +367,6 @@ File* readfile(char* filename)
 
 }
 
-
-
 void cli_conn(int s, int c)
 {
     httpreq *req;
@@ -346,7 +413,7 @@ void cli_conn(int s, int c)
         else
         {
             http_headers(c, 200);
-            if(!sendfileToClient(c, "image/png", file))
+            if(!sendfiletoclient(c, "image/png", file))
             {
                 res = "HTTP server error";
                 http_headers(c, 500); /* 500 = server error. */
@@ -373,53 +440,3 @@ void cli_conn(int s, int c)
     free(file->fContent);
     return;
 }
-
-int main(int argc, char *argv[])
-{
-    
-    int s, c;
-   
-    
-    s = srv_init(PORT);
-
-    if(!s)
-    {
-        fprintf(stderr, "%s\n", error);
-        return -1;
-    }   
-
-    printf("Listening on %s:%i\n", LISTENADDR, PORT);
-    while(1)
-    {
-        c = cli_accept(s);
-        if(!c)
-        {
-            fprintf(stderr, "%s\n", error);
-            continue;
-        }
-
-       
-
-        printf("Incoming connection\n");
-
-        /* for the main process: return the new process' id
-         * for the new process: return 0
-         * */
-        if(!fork())
-        {
-            
-            cli_conn(s, c);
-            close(s);
-            exit(0);
-        }
-        close(c);
-      
-    }
-
-    printf("Server shuting down");
-
-    return -1;
-}
-
-
-
