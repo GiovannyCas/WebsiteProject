@@ -241,13 +241,13 @@ char *cli_read(int c)
 
 void http_response(int c, char* contentType, char* data)
 {
-	char buf[512];
+	char buf[715];
 	int n;
 
-	memset(buf, 0, 512);
+	memset(buf, 0, 715);
 
 	n = strlen(data);
-	snprintf(buf, 511, 
+	snprintf(buf, 714, 
 	"Content-Type: %s\r\n"
 	"Content-Length: %d\r\n"
 	"\n%s\r\n",
@@ -312,8 +312,8 @@ int sendfiletoclient(int c, char* contentType, File* file)
 
 	memset(buf, 0, 512);
 	snprintf(buf, 511, 
-	"Content-Type: %s\n"
-	"Content-Length: %d\n\n",
+	"Content-Type: %s\r\n"
+	"Content-Length: %d\r\n\r\n",
 	contentType, file->size);
 	
 	n = strlen(buf);
@@ -368,7 +368,6 @@ char* render_static_file(char* filename)
 	while((ch = fgetc(file)) != EOF)
 	{
 		temp[i] = putchar(ch);
-		printf("%c", temp[i]);
 		i++;
 	}
 
@@ -470,7 +469,7 @@ void cli_conn(struct Route* route, int c)
 			http_response(c, "text/html; charset=utf-8", response_data);
 			free(response_data);
 		}
-		else if(strstr(req->url, "/.."))
+		else if(strstr(req->url, ".."))
 		{
 			http_headers(c, 403); /* 403-series = access denied etc */
 	        response_data = "Access denied";
@@ -494,7 +493,22 @@ void cli_conn(struct Route* route, int c)
 			{
 				strcat(template, dest->value);
 				response_data = render_static_file(template);
-	
+				// if(strstr(template, "/about"))
+				// {
+				// 	memset(str, 0, 96);
+				//     snprintf(str,95, ".%s", "/img/test.jpg");
+				// 	file = readfile(str);
+				// 	if(!file)
+				// 	{
+				// 		printf("error FILE");
+				// 	}
+				// 	else
+				// 	{
+				// 		sendfiletoclient(c, "image/jpg", file);
+				// 	}
+
+					
+				// }
 				http_headers(c, 200);
 				http_response(c, "text/html; charset=utf-8", response_data);
 				free(response_data);
@@ -550,7 +564,11 @@ void cli_conn(struct Route* route, int c)
 	//free(response_data);
 	free(req);
 	close(c);
-	//free(file->fContent);
+	// if(file->fContent)
+	// {
+	// 	free(file->fContent);
+	// }
+	
 	return;
 }
 
@@ -582,9 +600,11 @@ struct Route* addRoute(struct Route * root, char* key, char* value) {
 	if (strcmp(key, root->key) == 0) {
 		printf("============ WARNING ============\n");
 		printf("A Route For \"%s\" Already Exists\n", key);
-	}else if (strcmp(key, root->key) > 0) {
+	}
+	else if (strcmp(key, root->key) > 0) {
 		root->right = addRoute(root->right, key, value);
-	}else {
+	}
+	else {
 		root->left = addRoute(root->left, key, value);
 	}
 }
