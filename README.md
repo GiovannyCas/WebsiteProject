@@ -8,3 +8,5 @@ handling GET requests.
 operation under varying network conditions.
 * proficiency in low-level socket programming and HTTP protocol understanding through the
 creation of a custom HTTP server, showcasing technical expertise and problem-solving skills.
+
+![ezgif-1-57a76b6552](https://github.com/GiovannyCastroRosa/WebsiteCproject/assets/98754277/86799fb6-6d96-4dec-8311-f1fd5c36b750)
