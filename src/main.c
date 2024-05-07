@@ -52,8 +52,6 @@ void inorder(struct Route * root );
 
 /* OTHERS FUNCTIONS */
 File* readfile(char* filename);
-int sendfiletoclient(int c, char* contentType, File* file);
-char* render_static_file(char* filename);
 /******************/
 
 /* SERVER FUNCTIONS */
@@ -87,6 +85,7 @@ int main(int argc, char *argv[])
 
 	struct Route* route = initRoute("/", "index.html");
 	addRoute(route, "/about", "about.html");
+	addRoute(route, "/img", "test.jpg");
 
 	printf("\n====================================\n");
 	printf("=========ALL VAILABLE ROUTES========\n");
@@ -297,54 +296,6 @@ void hexdump(char* str, int size)
 	return;
 }
 
-/* 1 = everything is ok, 0 = on error. */
-int sendfiletoclient(int c, char* contentType, File* file)
-{ 
-	char buf[512];
-	char* p;
-	int n, x;
-	
-
-	if(!file)
-	{
-		return 0;
-	}
-
-	memset(buf, 0, 512);
-	snprintf(buf, 511, 
-	"Content-Type: %s\r\n"
-	"Content-Length: %d\r\n\r\n",
-	contentType, file->size);
-	
-	n = strlen(buf);
-	write(c, buf, n);
-
-	n = file->size;
-	p = file->fContent;
-	while(1)
-	{
-		
-		x = write(c, p, (n < 512)?n:512);
-		
-		if(x < 1)
-		{
-			return 0;
-		}
-		n -= x;
-		if(n < 1)
-		{
-			break;
-		}
-		else
-		{
-			p += x;
-		}
-	}
-
-	return 1;
-
-}
-
 char* render_static_file(char* filename)
 {
 	FILE* file = fopen(filename, "r");
@@ -376,68 +327,16 @@ char* render_static_file(char* filename)
 }
 
 
-/* returns 0 on error, or a file structure */
-File* readfile(char* filename)
-{
-	char buf[512];
-	char* p;
-	int n, x, fd;
-	File* f;
-	printf("Opening file\n");
-	fd = open(filename, O_RDONLY);
-	
-	if(fd < 0)
-	{
-		printf("Failed to open file");
-		return 0;
-	}
-	f = malloc(sizeof(struct sFile));
-	if(!f)
-	{
-		close(fd);
-		return 0;
-	}
 
-	strncpy(f->filename, filename, 63);
-	f->fContent = malloc(512);
-	printf("Now read() the file\n");
-	x = 0; /* bytes read */
-	while(1)
-	{
-		memset(buf, 0, 512);
-		n = read(fd, buf, 512);
-		if(!n)
-		{
-			break;
-		}
-		else if(x == -1)
-		{
-			close(fd);
-			free(f->fContent);
-			free(f);
-			printf("Failed error.");
-			return 0;
-		}
-
-		memcpy((f->fContent) + x, buf,  n);
-		x += n;
-		f->fContent = realloc(f->fContent, (512 + x));
-	}
-	f->size = x;
-	close(fd);
-	return f;
-
-}
 
 void cli_conn(struct Route* route, int c)
 {
 	httpreq *req;
 	char *p;
 	char* response_data;
-	//char *res;
-	//char str[96];
+
 	char template[100] = "";
-	//File* file;
+	File* file;
 
 	p = cli_read(c);
 	if(!p)
@@ -469,12 +368,6 @@ void cli_conn(struct Route* route, int c)
 			http_response(c, "text/html; charset=utf-8", response_data);
 			free(response_data);
 		}
-		else if(strstr(req->url, ".."))
-		{
-			http_headers(c, 403); /* 403-series = access denied etc */
-	        response_data = "Access denied";
-	        http_response(c, "text/plain", response_data);
-		}
 		else 
 		{
 			struct Route* dest = search(route, req->url);
@@ -493,22 +386,7 @@ void cli_conn(struct Route* route, int c)
 			{
 				strcat(template, dest->value);
 				response_data = render_static_file(template);
-				// if(strstr(template, "/about"))
-				// {
-				// 	memset(str, 0, 96);
-				//     snprintf(str,95, ".%s", "/img/test.jpg");
-				// 	file = readfile(str);
-				// 	if(!file)
-				// 	{
-				// 		printf("error FILE");
-				// 	}
-				// 	else
-				// 	{
-				// 		sendfiletoclient(c, "image/jpg", file);
-				// 	}
-
-					
-				// }
+				
 				http_headers(c, 200);
 				http_response(c, "text/html; charset=utf-8", response_data);
 				free(response_data);
@@ -516,58 +394,9 @@ void cli_conn(struct Route* route, int c)
 		}
 	}
 
-
-	// /* TODO: improve security by checking for things like "../.." etc */
-	// if(!strcmp(req->method, "GET") && !strncmp(req->url, "/img/", 5))
-	// {
-	//     if(strstr(req->url, ".."))
-	//     {
-	//         http_headers(c, 403); /* 403-series = access denied etc */
-	//         res = "Access denied";
-	//         http_response(c, "text/plain", res);
-
-	//     }
-	//     memset(str, 0, 96);
-	//     snprintf(str,95, ".%s", req->url);
-	//     file = readfile(str);
-	//     if(!file)
-	//     {
-	//         res = "404 - File not found";
-	//         http_headers(c, 404); /* 404 = file not found. */
-	//         http_response(c, "text/plain", res);
-			
-	//     }
-	//     else
-	//     {
-	//         http_headers(c, 200);
-	//         if(!sendfiletoclient(c, "image/png", file))
-	//         {
-	//             res = "HTTP server error";
-	//             http_headers(c, 500); /* 500 = server error. */
-	//             http_response(c, "text/plain", res);
-	//         }
-			
-	//     }
-	// }
-	// if(!strcmp(req->method, "GET") && !strcmp(req->url, "/app/webpage"))
-	// {
-	//     res = "<html><img src='/img/test.jpg' alt='image' /></html>";
-	//     http_headers(c, 200); /* 200 = everything is ok. */
-	//     http_response(c, "text/html", res);
-	// }
-	// else
-	// {
-	//     res = "File not found";
-	//     http_headers(c, 404); /* 404 = file not found. */
-	//     http_response(c, "text/plain", res); 
-	// }
-	//free(response_data);
 	free(req);
 	close(c);
-	// if(file->fContent)
-	// {
-	// 	free(file->fContent);
-	// }
+	
 	
 	return;
 }
