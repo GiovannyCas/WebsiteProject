@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 
 	struct Route* route = initRoute("/", "index.html");
 	addRoute(route, "/about", "about.html");
-	addRoute(route, "/img", "test.jpg");
+	
 
 	printf("\n====================================\n");
 	printf("=========ALL VAILABLE ROUTES========\n");
